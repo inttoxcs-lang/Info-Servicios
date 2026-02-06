@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>INFO SERV | Dashboard</title>
+  <title>INFO SERV | Semana Operativa</title>
   <style>
     :root{
       --bg:#fafafa; --card:#fff; --border:#e5e7eb; --text:#0f172a; --muted:#64748b;
@@ -48,11 +48,6 @@
     .kpi .v{ margin-top:4px; font-size:22px; font-weight:800; letter-spacing:-.02em; }
     .kpi .h{ margin-top:3px; font-size:11px; color:var(--muted); }
 
-    .day{
-      text-align:left; cursor:pointer; padding:0; background:transparent; border:none;
-    }
-    .day .card{ transition: .15s; }
-    .day:hover .card{ border-color:#cbd5e1; box-shadow:0 6px 18px rgba(0,0,0,.06); }
     .pill{
       display:inline-flex; align-items:center; gap:6px;
       font-size:11px; font-weight:700; border-radius:999px; padding:4px 10px; border:1px solid var(--border);
@@ -70,7 +65,7 @@
       opacity:0; pointer-events:none; transition:.2s;
     }
     .drawer{
-      position:fixed; top:0; right:0; height:100%; width:min(520px, 100%);
+      position:fixed; top:0; right:0; height:100%; width:min(560px, 100%);
       background:#fff; transform:translateX(100%); transition:.2s;
       box-shadow:-8px 0 30px rgba(0,0,0,.12);
       display:flex; flex-direction:column;
@@ -99,77 +94,41 @@
       .week{ grid-template-columns: repeat(7, minmax(0,1fr)); }
     }
 
+    .dayBtn{ text-align:left; cursor:pointer; padding:0; background:transparent; border:none; }
+    .dayBtn .card{ transition:.15s; }
+    .dayBtn:hover .card{ border-color:#cbd5e1; box-shadow:0 6px 18px rgba(0,0,0,.06); }
+
     .dayBig .card .hd{ padding:18px 18px 0; }
     .dayBig .card .ttl{ font-size:14px; font-weight:900; }
     .dayBig .card .st{ font-size:12px; }
 
-    .bigRoutes{
-      display:grid;
-      gap:10px;
-    }
+    .bigRoutes{ display:grid; gap:10px; }
 
     .bigRouteRow{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:10px;
-      padding:12px 12px;
-      border:1px solid #eef2f7;
-      border-radius:16px;
-      background:#fbfdff;
+      display:flex; justify-content:space-between; align-items:flex-start; gap:10px;
+      padding:12px 12px; border:1px solid #eef2f7; border-radius:16px; background:#fbfdff;
     }
-
     .bigRouteTag{
-      font-size:11px;
-      font-weight:900;
-      letter-spacing:.06em;
-      color:var(--muted);
+      font-size:11px; font-weight:900; letter-spacing:.06em; color:var(--muted);
     }
-
     .bigRouteVal{
-      margin-top:4px;
-      font-size:20px;
-      font-weight:950;
-      letter-spacing:-.03em;
-      line-height:1.05;
-      color:var(--text);
+      margin-top:4px; font-size:20px; font-weight:950; letter-spacing:-.03em; line-height:1.05; color:var(--text);
     }
-
-    .bigFlags{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
-
+    .bigFlags{ display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
     .bigFlag{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      border-radius:999px;
-      padding:6px 10px;
-      font-size:12px;
-      font-weight:950;
-      border:1px solid var(--border);
+      display:inline-flex; align-items:center; justify-content:center;
+      border-radius:999px; padding:6px 10px; font-size:12px; font-weight:950; border:1px solid var(--border);
     }
-
     .bigFlag.gray{ background:#f1f5f9; color:#334155; border-color:#e2e8f0; }
     .bigFlag.red{ background:var(--alert-bg); color:var(--alert); border-color:#fecaca; }
     .bigFlag.warn{ background:var(--warn-bg); color:var(--warn); border-color:#fde68a; }
 
     .small3{
-      display:grid;
-      grid-template-columns: repeat(3, minmax(0,1fr));
-      gap:10px;
+      display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px;
     }
-
     .smallBox{
-      padding:10px 10px;
-      border:1px solid #f1f5f9;
-      border-radius:14px;
-      background:#ffffff;
+      padding:10px 10px; border:1px solid #f1f5f9; border-radius:14px; background:#ffffff;
     }
-
     .smallBox .k{ font-size:11px; color:var(--muted); font-weight:900; }
     .smallBox .v{ margin-top:2px; font-size:16px; font-weight:950; color:var(--text); }
   </style>
@@ -180,13 +139,13 @@
     <header>
       <div>
         <h1>INFO SERV</h1>
-        <div class="sub">Tablero operativo conectado a Google Sheets (Semana: 7 tarjetas grandes).</div>
+        <div class="sub">Semana operativa: 7 tarjetas grandes (prioridad Línea TM / Línea TT / Cortado).</div>
       </div>
       <div class="meta" id="meta">—</div>
     </header>
 
     <div class="row">
-      <input id="filter" class="input" placeholder="Filtrar por texto (ej: inasistencias, 07/02, 7:35…)" />
+      <input id="filter" class="input" placeholder="Filtrar (ej: 07/02, cortado, refuerzo, 7:35…)" />
       <div style="display:flex; gap:10px;">
         <button class="btn" id="clear">Limpiar</button>
         <button class="btn primary" id="reload">Actualizar</button>
@@ -213,15 +172,6 @@
         <div class="bd">
           <div class="week" id="week"></div>
           <div id="calError" class="err" style="display:none; margin-top:10px;"></div>
-
-          <!-- DEBUG -->
-          <div style="margin-top:14px; display:flex; gap:10px; align-items:center;">
-            <button class="btn" id="toggleDebug">Ver tabla raw</button>
-            <span style="font-size:12px; color:var(--muted);">Muestra el CSV ya transformado (para diagnóstico).</span>
-          </div>
-          <div id="debugWrap" style="display:none; margin-top:12px; overflow:auto; border:1px solid var(--border); border-radius:14px; background:#fff;">
-            <table id="debugTable" style="border-collapse:collapse; width:100%; font-size:12px;"></table>
-          </div>
         </div>
       </section>
 
@@ -234,7 +184,7 @@
           Este HTML consume:<br/>
           <code id="csvUrl"></code>
           <div style="margin-top:10px;">
-            Si falta info, revisá: permisos del Sheet y <code>gid</code> correcto de la pestaña.
+            Si no carga o falta info, revisá permisos del Sheet (link público) y el <code>gid</code> correcto.
           </div>
         </div>
       </section>
@@ -253,8 +203,8 @@
 
 <script>
 /** === CONFIG === */
-const SHEET_ID = "120WSaF1Zu6h4-Edid-Yc7GIWKwtQB61GQ3rNexH-MXc"; // de tu URL
-const GID = "0"; // si la pestaña "Externos" NO es la primera, cambiá este valor
+const SHEET_ID = "120WSaF1Zu6h4-Edid-Yc7GIWKwtQB61GQ3rNexH-MXc";
+const GID = "0"; // cambia si "Externos" no es gid=0
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${encodeURIComponent(GID)}`;
 document.getElementById("csvUrl").textContent = CSV_URL;
 
@@ -294,7 +244,7 @@ function asValue(s){
   return t;
 }
 
-/** === MATRIX -> DAY RECORDS (NO RECORTA COLUMNAS) === */
+/** === MATRIX -> DAY RECORDS (no recorta columnas aunque haya headers vacíos) === */
 function matrixFromCSV(csvText){
   const grid = parseCSV(csvText).filter(r => r.some(c => (c ?? "").trim() !== ""));
   if (grid.length < 2) throw new Error("El CSV está vacío o no tiene filas suficientes.");
@@ -302,7 +252,6 @@ function matrixFromCSV(csvText){
   const header = grid[0];
   const rawHeaders = header.slice(1).map(s => (s ?? "").trim());
   const cols = rawHeaders.length;
-
   const dates = rawHeaders.map((h, i) => h || `COL_${i+1}`);
 
   const rows = [];
@@ -314,7 +263,6 @@ function matrixFromCSV(csvText){
     const padded = slice.concat(Array(Math.max(0, cols - slice.length)).fill(""));
     rows.push({ label, values: padded.map(asValue) });
   }
-
   return { dates, rows };
 }
 
@@ -363,10 +311,11 @@ function computeKPIs(days){
   ];
 }
 
-/** === UI RENDER === */
+/** === UI === */
 const elMeta = document.getElementById("meta");
 const elUpdated = document.getElementById("updatedAt");
 const elKpis = document.getElementById("kpis");
+const elWeek = document.getElementById("week");
 const elKpiError = document.getElementById("kpiError");
 const elCalError = document.getElementById("calError");
 
@@ -376,10 +325,7 @@ document.getElementById("reload").onclick = () => load();
 
 const drawer = document.getElementById("drawer");
 const drawerBack = document.getElementById("drawerBack");
-const closeDrawer = () => {
-  drawer.classList.remove("open");
-  drawerBack.classList.remove("open");
-};
+const closeDrawer = () => { drawer.classList.remove("open"); drawerBack.classList.remove("open"); };
 document.getElementById("closeDrawer").onclick = closeDrawer;
 drawerBack.onclick = closeDrawer;
 
@@ -393,6 +339,13 @@ function toneForDay(day){
   return "ok";
 }
 
+function escapeHtml(s){
+  return (s ?? "").toString()
+    .replaceAll("&","&amp;").replaceAll("<","&lt;")
+    .replaceAll(">","&gt;").replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
 function renderKPIs(){
   elKpis.innerHTML = "";
   for (const k of STATE.kpis){
@@ -404,112 +357,6 @@ function renderKPIs(){
       <div class="h">${escapeHtml(k.hint || "")}</div>
     `;
     elKpis.appendChild(div);
-  }
-}
-
-/** === Vista semanal: últimos 7 días (prioriza Línea TM / Línea TT / Cortado) === */
-function renderCalendar(){
-  const f = (filterInput.value || "").trim().toLowerCase();
-
-  const elWeek = document.getElementById("week");
-  if (!elWeek) return;
-  elWeek.innerHTML = "";
-
-  const filtered = !f ? STATE.days : STATE.days.filter(d => {
-    const hay = Object.entries(d.items).map(([k,v]) => `${k}:${v ?? ""}`.toLowerCase()).join(" | ");
-    return hay.includes(f) || String(d.date).toLowerCase().includes(f);
-  });
-
-  const last7 = filtered.slice(Math.max(0, filtered.length - 7));
-
-  for (const d of last7){
-    const tone = toneForDay(d);
-    const pillClass = tone === "ok" ? "ok" : tone === "warn" ? "warn" : "alert";
-    const pillText  = tone === "ok" ? "OK" : tone === "warn" ? "ATENCIÓN" : "ALERTA";
-
-    const lineaTM = d.items["Linea TM"];
-    const lineaTT = d.items["Linea TT"];
-    const cortado = d.items["Cortado"];
-    const refuerzo = d.items["Refuerzo"];
-    const especiales = d.items["Especiales"];
-
-    const cortadoNum = (typeof cortado === "number") ? cortado : (cortado ? 1 : 0);
-    const cortadoOn = cortadoNum > 0;
-
-    const refNum = (typeof refuerzo === "number") ? refuerzo : (refuerzo ? 1 : 0);
-    const espNum = (typeof especiales === "number") ? especiales : (especiales ? 1 : 0);
-
-    const citTM = d.items["Conductores citados TM"];
-    const inasTM = d.items["Inasistencias TM"];
-    const relTT = d.items["Relevantes guardia TT"];
-
-    const btn = document.createElement("button");
-    btn.className = "day dayBig";
-    btn.onclick = () => openDetail(d);
-
-    btn.innerHTML = `
-      <div class="card">
-        <div class="hd">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div class="ttl">${escapeHtml(d.date)}</div>
-            <span class="pill ${pillClass}">${pillText}</span>
-          </div>
-          <div class="st">Operación del día</div>
-        </div>
-
-        <div class="bd">
-          <div class="bigRoutes">
-
-            <div class="bigRouteRow">
-              <div>
-                <div class="bigRouteTag">LÍNEA TM</div>
-                <div class="bigRouteVal">${escapeHtml(String(lineaTM ?? "-"))}</div>
-              </div>
-              <div class="bigFlags">
-                <span class="bigFlag gray">TM</span>
-              </div>
-            </div>
-
-            <div class="bigRouteRow">
-              <div>
-                <div class="bigRouteTag">LÍNEA TT</div>
-                <div class="bigRouteVal">${escapeHtml(String(lineaTT ?? "-"))}</div>
-              </div>
-              <div class="bigFlags">
-                <span class="bigFlag gray">TT</span>
-              </div>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
-              <div class="bigRouteTag">CORTADO / EVENTOS</div>
-              <div class="bigFlags">
-                ${cortadoOn ? `<span class="bigFlag red">CORTADO</span>` : `<span class="bigFlag gray">OK</span>`}
-                ${refNum > 0 ? `<span class="bigFlag warn">REFUERZO</span>` : ``}
-                ${espNum > 0 ? `<span class="bigFlag warn">ESPECIALES</span>` : ``}
-              </div>
-            </div>
-
-            <div class="small3">
-              <div class="smallBox">
-                <div class="k">Citados TM</div>
-                <div class="v">${escapeHtml(String(citTM ?? "-"))}</div>
-              </div>
-              <div class="smallBox">
-                <div class="k">Inasist. TM</div>
-                <div class="v">${escapeHtml(String(inasTM ?? "-"))}</div>
-              </div>
-              <div class="smallBox">
-                <div class="k">Relev. TT</div>
-                <div class="v">${escapeHtml(String(relTT ?? "-"))}</div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-    `;
-
-    elWeek.appendChild(btn);
   }
 }
 
@@ -541,62 +388,107 @@ function openDetail(day){
   drawerBack.classList.add("open");
 }
 
+/** === Semana: últimos 7 días === */
+function renderWeek(){
+  const f = (filterInput.value || "").trim().toLowerCase();
+  elWeek.innerHTML = "";
+
+  const filtered = !f ? STATE.days : STATE.days.filter(d => {
+    const hay = Object.entries(d.items).map(([k,v]) => `${k}:${v ?? ""}`.toLowerCase()).join(" | ");
+    return hay.includes(f) || String(d.date).toLowerCase().includes(f);
+  });
+
+  const last7 = filtered.slice(Math.max(0, filtered.length - 7));
+
+  for (const d of last7){
+    const tone = toneForDay(d);
+    const pillClass = tone === "ok" ? "ok" : tone === "warn" ? "warn" : "alert";
+    const pillText  = tone === "ok" ? "OK" : tone === "warn" ? "ATENCIÓN" : "ALERTA";
+
+    const lineaTM = d.items["Linea TM"];
+    const lineaTT = d.items["Linea TT"];
+    const cortado = d.items["Cortado"];
+    const refuerzo = d.items["Refuerzo"];
+    const especiales = d.items["Especiales"];
+
+    const cortadoNum = (typeof cortado === "number") ? cortado : (cortado ? 1 : 0);
+    const cortadoOn = cortadoNum > 0;
+
+    const refNum = (typeof refuerzo === "number") ? refuerzo : (refuerzo ? 1 : 0);
+    const espNum = (typeof especiales === "number") ? especiales : (especiales ? 1 : 0);
+
+    const citTM = d.items["Conductores citados TM"];
+    const inasTM = d.items["Inasistencias TM"];
+    const relTT = d.items["Relevantes guardia TT"];
+
+    const btn = document.createElement("button");
+    btn.className = "dayBtn dayBig";
+    btn.onclick = () => openDetail(d);
+
+    btn.innerHTML = `
+      <div class="card">
+        <div class="hd">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="ttl">${escapeHtml(d.date)}</div>
+            <span class="pill ${pillClass}">${pillText}</span>
+          </div>
+          <div class="st">Operación del día</div>
+        </div>
+
+        <div class="bd">
+          <div class="bigRoutes">
+
+            <div class="bigRouteRow">
+              <div>
+                <div class="bigRouteTag">LÍNEA TM</div>
+                <div class="bigRouteVal">${escapeHtml(String(lineaTM ?? "-"))}</div>
+              </div>
+              <div class="bigFlags"><span class="bigFlag gray">TM</span></div>
+            </div>
+
+            <div class="bigRouteRow">
+              <div>
+                <div class="bigRouteTag">LÍNEA TT</div>
+                <div class="bigRouteVal">${escapeHtml(String(lineaTT ?? "-"))}</div>
+              </div>
+              <div class="bigFlags"><span class="bigFlag gray">TT</span></div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+              <div class="bigRouteTag">CORTADO / EVENTOS</div>
+              <div class="bigFlags">
+                ${cortadoOn ? `<span class="bigFlag red">CORTADO</span>` : `<span class="bigFlag gray">OK</span>`}
+                ${refNum > 0 ? `<span class="bigFlag warn">REFUERZO</span>` : ``}
+                ${espNum > 0 ? `<span class="bigFlag warn">ESPECIALES</span>` : ``}
+              </div>
+            </div>
+
+            <div class="small3">
+              <div class="smallBox">
+                <div class="k">Citados TM</div>
+                <div class="v">${escapeHtml(String(citTM ?? "-"))}</div>
+              </div>
+              <div class="smallBox">
+                <div class="k">Inasist. TM</div>
+                <div class="v">${escapeHtml(String(inasTM ?? "-"))}</div>
+              </div>
+              <div class="smallBox">
+                <div class="k">Relev. TT</div>
+                <div class="v">${escapeHtml(String(relTT ?? "-"))}</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    `;
+    elWeek.appendChild(btn);
+  }
+}
+
 function render(){
   renderKPIs();
-  renderCalendar();
-  if (DEBUG_OPEN) renderDebugTable();
-}
-
-function escapeHtml(s){
-  return (s ?? "").toString()
-    .replaceAll("&","&amp;").replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
-/** === DEBUG TABLE === */
-let DEBUG_OPEN = false;
-
-function renderDebugTable(){
-  const t = document.getElementById("debugTable");
-  const wrap = document.getElementById("debugWrap");
-  if (!t || !wrap) return;
-
-  const headers = ["Métrica", ...(STATE.days.map(d => d.date))];
-
-  const keys = new Set();
-  for (const d of STATE.days) Object.keys(d.items).forEach(k => keys.add(k));
-  const orderedKeys = Array.from(keys);
-
-  let html = "<thead><tr>";
-  for (const h of headers) {
-    html += `<th style="position:sticky; top:0; background:#f8fafc; border-bottom:1px solid var(--border); text-align:left; padding:8px; white-space:nowrap;">${escapeHtml(h)}</th>`;
-  }
-  html += "</tr></thead><tbody>";
-
-  for (const k of orderedKeys) {
-    html += "<tr>";
-    html += `<td style="border-bottom:1px solid #f1f5f9; padding:8px; white-space:nowrap; font-weight:800;">${escapeHtml(k)}</td>`;
-    for (const d of STATE.days) {
-      const v = d.items[k];
-      html += `<td style="border-bottom:1px solid #f1f5f9; padding:8px; white-space:nowrap;">${escapeHtml(String(v ?? ""))}</td>`;
-    }
-    html += "</tr>";
-  }
-
-  html += "</tbody>";
-  t.innerHTML = html;
-}
-
-const btnDbg = document.getElementById("toggleDebug");
-if (btnDbg) {
-  btnDbg.onclick = () => {
-    DEBUG_OPEN = !DEBUG_OPEN;
-    const wrap = document.getElementById("debugWrap");
-    if (wrap) wrap.style.display = DEBUG_OPEN ? "block" : "none";
-    if (DEBUG_OPEN) renderDebugTable();
-  };
+  renderWeek();
 }
 
 /** === LOAD === */
@@ -634,7 +526,7 @@ async function load(){
   }
 }
 
-filterInput.addEventListener("input", () => renderCalendar());
+filterInput.addEventListener("input", () => renderWeek());
 load();
 </script>
 </body>
