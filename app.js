@@ -6,15 +6,22 @@
     "https://docs.google.com/spreadsheets/d/120WSaF1Zu6h4-Edid-Yc7GIWKwtQB61GQ3rNexH-MXc/edit?gid=0#gid=0";
 
   const DEFAULT_GID = "0";
-  const DEFAULT_HEADER_ROW = 1;
-  const DEFAULT_METRIC_COL = 1;
-  const DAYS_BACK = 6;
+  const DEFAULT_HEADER_ROW = 1; // 1-based
+  const DEFAULT_METRIC_COL = 1; // 1-based
+  const DAYS_BACK = 6; // ancla + 6 atrás = 7 tarjetas
 
   // 🔄 Auto refresh (minutos)
   const REFRESH_MINUTES = 5;
   const REFRESH_MS = REFRESH_MINUTES * 60 * 1000;
 
+  // =========================
+  // DOM
+  // =========================
   const cardsGrid = document.getElementById("cardsGrid");
+
+  // =========================
+  // STATE
+  // =========================
   let dayCards = [];
   let isLoading = false;
   let refreshTimer = null;
@@ -22,135 +29,241 @@
   // =========================
   // HELPERS
   // =========================
-  const escapeHtml = s =>
-    String(s ?? "")
+  function escapeHtml(str) {
+    return String(str ?? "")
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
+  }
 
-  const normalize = s =>
-    String(s ?? "")
+  function normalize(s) {
+    return String(s ?? "")
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/\s+/g, " ")
       .trim();
+  }
 
-  const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  function startOfDay(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
 
-  const addDays = (d, n) => {
+  function addDays(d, n) {
     const x = new Date(d);
     x.setDate(x.getDate() + n);
     return x;
-  };
-
-  const extractLegajos = v =>
-    String(v ?? "")
-      .split(/[\s,;|]+/)
-      .filter(x => /^\d{3,}$/.test(x));
-
-  const uniqueSortLegajos = arr =>
-    Array.from(new Set(arr)).sort((a, b) => Number(a) - Number(b));
-
-  const parseNumber = v => {
-    const m = String(v ?? "").match(/-?\d+/);
-    return m ? Number(m[0]) : 0;
-  };
-
-  const formatDate = d =>
-    `${String(d.getDate()).padStart(2, "0")}/${String(
-      d.getMonth() + 1
-    ).padStart(2, "0")}/${d.getFullYear()}`;
-
-  // =========================
-  // FETCH + PARSE
-  // =========================
-  async function fetchCsv() {
-    const id = SHEET_URL.match(/\/d\/([^/]+)/)[1];
-    const url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${DEFAULT_GID}`;
-    const r = await fetch(url, { cache: "no-store" });
-    const t = await r.text();
-    if (t.startsWith("<")) throw "Sheet no público";
-    return t;
   }
 
-  function parseCsv(t) {
-    return t
-      .trim()
-      .split("\n")
-      .map(r => r.split(",").map(c => c.trim()));
+  function formatDate(d) {
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    return `${dd}/${mm}/${d.getFullYear()}`;
+  }
+
+  function extractSpreadsheetId(url) {
+    const s = String(url || "");
+    const m = s.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    return m ? m[1] : "";
   }
 
   function parseDate(label) {
-    const m = label.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?/);
+    const s = String(label ?? "").trim();
+    const m = s.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
     if (!m) return null;
-    return startOfDay(
-      new Date(m[3] || new Date().getFullYear(), m[2] - 1, m[1])
-    );
+
+    const dd = Number(m[1]);
+    const mm = Number(m[2]) - 1;
+    const yRaw = m[3] ? Number(m[3]) : new Date().getFullYear();
+    const yyyy = yRaw < 100 ? 2000 + yRaw : yRaw;
+
+    const dt = new Date(yyyy, mm, dd);
+    return Number.isNaN(dt.getTime()) ? null : startOfDay(dt);
+  }
+
+  function parseNumber(value) {
+    const s = String(value ?? "").trim();
+    if (!s) return 0;
+    if (/^\d{1,2}:\d{2}$/.test(s)) return 0; // horas no cuentan
+    const m = s.match(/-?\d+(?:[.,]\d+)?/);
+    if (!m) return 0;
+    const n = Number(m[0].replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function extractLegajos(value) {
+    return String(value ?? "")
+      .split(/[\s,;|]+/)
+      .map(v => v.trim())
+      .filter(v => /^\d{3,}$/.test(v));
+  }
+
+  function uniqueSortLegajos(legajos) {
+    const uniq = Array.from(new Set((legajos || []).map(String)));
+    return uniq.sort((a, b) => Number(a) - Number(b));
+  }
+
+  // Ocultar en tabla:
+  function shouldHideInTable(metricName) {
+    const n = normalize(metricName);
+    if (n === "linea tm") return true;
+    if (n === "linea tt") return true;
+    if (n.includes("legajo") && n.includes("inasist")) return true;
+    if (n === "inasistencias tm") return true; // queda solo KPI
+    return false;
   }
 
   // =========================
-  // BUILD
+  // CSV PARSER (REAL)
   // =========================
-  function buildCards(matrix) {
-    const header = matrix[0];
-    const rows = matrix.slice(1);
+  function parseCsvToMatrix(text) {
+    const rows = [];
+    let curRow = [];
+    let cur = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      const next = text[i + 1];
+
+      if (ch === '"' && inQuotes && next === '"') {
+        cur += '"';
+        i++;
+        continue;
+      }
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+        continue;
+      }
+      if (!inQuotes && ch === ",") {
+        curRow.push(cur);
+        cur = "";
+        continue;
+      }
+      if (!inQuotes && ch === "\n") {
+        curRow.push(cur);
+        rows.push(curRow);
+        curRow = [];
+        cur = "";
+        continue;
+      }
+      if (ch !== "\r") cur += ch;
+    }
+
+    curRow.push(cur);
+    rows.push(curRow);
+
+    return rows.map(r => r.map(c => String(c ?? "").trim()));
+  }
+
+  // =========================
+  // FETCH CSV (NO CACHE)
+  // =========================
+  async function fetchCsv(spreadsheetId, gid) {
+    const url =
+      `https://docs.google.com/spreadsheets/d/${encodeURIComponent(spreadsheetId)}` +
+      `/export?format=csv&gid=${encodeURIComponent(gid)}`;
+
+    const res = await fetch(url, { cache: "no-store" });
+    const text = await res.text();
+
+    // Si Google devuelve HTML, está bloqueado por permisos/publicación
+    if (!res.ok || text.trim().startsWith("<")) {
+      throw new Error("No se pudo leer el Sheet. Asegurate que esté publicado o público.");
+    }
+    return text;
+  }
+
+  // =========================
+  // BUILD CARDS
+  // =========================
+  function buildCards(matrix, headerRow1, metricCol1) {
+    const h = headerRow1 - 1;
+    const mCol = metricCol1 - 1;
+
+    const header = matrix[h];
+    if (!header) throw new Error("Fila de fechas inválida (headerRow).");
+
     const cols = [];
+    for (let c = 0; c < header.length; c++) {
+      if (c === mCol) continue;
+      const d = parseDate(header[c]);
+      if (d) cols.push({ c, d });
+    }
+    if (!cols.length) throw new Error("No se detectaron columnas con fechas en el header.");
 
-    header.forEach((h, i) => {
-      if (i === 0) return;
-      const d = parseDate(h);
-      if (d) cols.push({ i, d });
-    });
+    const rows = matrix.slice(h + 1);
 
-    return cols.map(({ i, d }) => {
-      let lineaTM = "—",
-        lineaTT = "—",
-        legajos = [];
+    return cols.map(({ c, d }) => {
+      let lineaTM = "—";
+      let lineaTT = "—";
+      let legajos = [];
       const table = [];
 
-      for (let r = 0; r < rows.length; r++) {
-        const name = rows[r][0];
-        const val = rows[r][i];
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i] || [];
+        const name = String(row[mCol] ?? "").trim();
+        const val = String(row[c] ?? "").trim();
+
+        // Ojo: en tu sheet hay filas de legajos con el "name" vacío.
         if (!name) continue;
+
         const n = normalize(name);
 
-        if (n === "linea tm") lineaTM = val;
-        else if (n === "linea tt") lineaTT = val;
-        else if (n === "inasistencias tm") {
-          const cant = parseNumber(val);
-          let j = r + 1;
+        if (n === "linea tm" || n.includes("linea tm")) lineaTM = val || "—";
+        if (n === "linea tt" || n.includes("linea tt")) lineaTT = val || "—";
+
+        // Si existe fila explícita de legajos
+        if (n.includes("legajo") && n.includes("inasist")) {
+          legajos = extractLegajos(val);
+        }
+
+        // ✅ Caso real: "Inasistencias TM" y luego legajos en filas siguientes sin nombre
+        if (n === "inasistencias tm") {
+          const expected = parseNumber(val); // ej 3
           const collected = [];
-          while (j < rows.length && !rows[j][0]) {
-            collected.push(...extractLegajos(rows[j][i]));
+
+          let j = i + 1;
+          while (j < rows.length) {
+            const nextName = String(rows[j]?.[mCol] ?? "").trim();
+            const nextVal = String(rows[j]?.[c] ?? "").trim();
+            if (nextName) break;
+            collected.push(...extractLegajos(nextVal));
             j++;
           }
-          if (cant) legajos = collected;
-          r = j - 1;
-        } else {
+
+          if (expected > 0 && collected.length) {
+            legajos = collected;
+          }
+
+          i = j - 1;
+        }
+
+        if (!shouldHideInTable(name)) {
           table.push({ name, val });
         }
       }
 
-      return {
-        date: d,
-        lineaTM,
-        lineaTT,
-        legajos: uniqueSortLegajos(legajos),
-        table
-      };
+      legajos = uniqueSortLegajos(legajos);
+
+      return { date: d, lineaTM, lineaTT, legajos, table };
     });
   }
 
   function windowCards(cards) {
     const today = startOfDay(new Date());
-    const valid = cards.filter(c => c.date <= today);
-    const anchor = valid.reduce((a, b) => (b.date > a ? b.date : a), valid[0].date);
+    const valid = cards.filter(c => c.date && c.date <= today);
+    if (!valid.length) return [];
+
+    let anchor = valid[0].date;
+    for (const c of valid) if (c.date > anchor) anchor = c.date;
+
     const min = addDays(anchor, -DAYS_BACK);
+
     return valid
-      .filter(c => c.date >= min)
+      .filter(c => c.date >= min && c.date <= anchor)
       .sort((a, b) => b.date - a.date);
   }
 
@@ -158,12 +271,14 @@
   // RENDER
   // =========================
   function render() {
+    if (!cardsGrid) return;
     cardsGrid.innerHTML = "";
+
     const today = startOfDay(new Date());
 
-    windowCards(dayCards).forEach(c => {
-      const isToday = c.date.getTime() === today.getTime();
-      const hasInasist = c.legajos.length > 0;
+    windowCards(dayCards).forEach(card => {
+      const isToday = card.date.getTime() === today.getTime();
+      const hasInasist = card.legajos.length > 0;
 
       const el = document.createElement("article");
       el.className = `card ${hasInasist ? "card--alert" : "card--ok"} ${
@@ -175,33 +290,41 @@
           <div class="card-date">
             <div class="date-pill">
               <span class="dot ${hasInasist ? "dot--red" : "dot--green"}"></span>
-              ${formatDate(c.date)}
+              ${escapeHtml(formatDate(card.date))}
             </div>
           </div>
 
           <div class="kpi-row">
-            <div class="kpi"><div class="k">Línea TM</div><div class="v">${escapeHtml(
-              c.lineaTM
-            )}</div></div>
-            <div class="kpi"><div class="k">Línea TT</div><div class="v">${escapeHtml(
-              c.lineaTT
-            )}</div></div>
-            <div class="kpi"><div class="k">Legajo inasistencia</div><div class="v">${
-              c.legajos.length ? c.legajos.join(", ") : "—"
-            }</div></div>
+            <div class="kpi">
+              <div class="k">Línea TM</div>
+              <div class="v">${escapeHtml(String(card.lineaTM))}</div>
+            </div>
+
+            <div class="kpi">
+              <div class="k">Línea TT</div>
+              <div class="v">${escapeHtml(String(card.lineaTT))}</div>
+            </div>
+
+            <div class="kpi">
+              <div class="k">Legajo inasistencia</div>
+              <div class="v">${escapeHtml(card.legajos.length ? card.legajos.join(", ") : "—")}</div>
+            </div>
           </div>
 
           <div class="table table-scroll">
-            ${c.table
+            ${card.table
               .map(
-                r => `<div class="row"><div class="key">${escapeHtml(
-                  r.name
-                )}</div><div class="val">${escapeHtml(r.val || "—")}</div></div>`
+                r => `
+                <div class="row">
+                  <div class="key">${escapeHtml(r.name)}</div>
+                  <div class="val">${escapeHtml(r.val || "—")}</div>
+                </div>`
               )
               .join("")}
           </div>
         </div>
       `;
+
       cardsGrid.appendChild(el);
     });
   }
@@ -212,17 +335,36 @@
   async function load() {
     if (isLoading) return;
     isLoading = true;
+
     try {
-      const csv = await fetchCsv();
-      dayCards = buildCards(parseCsv(csv));
+      const id = extractSpreadsheetId(SHEET_URL);
+      if (!id) throw new Error("No pude extraer el ID del Sheet desde la URL.");
+
+      const csv = await fetchCsv(id, DEFAULT_GID);
+      const matrix = parseCsvToMatrix(csv);
+
+      dayCards = buildCards(matrix, DEFAULT_HEADER_ROW, DEFAULT_METRIC_COL);
       render();
+    } catch (err) {
+      console.error(err);
+      // Si querés, acá podemos mostrar un mensaje en pantalla, pero vos pediste sin banners.
+      if (cardsGrid) cardsGrid.innerHTML = "";
     } finally {
       isLoading = false;
     }
   }
 
-  load();
-  refreshTimer = setInterval(() => {
+  function startAutoRefresh() {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, REFRESH_MS);
+  }
+
+  document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") load();
-  }, REFRESH_MS);
+  });
+
+  load();
+  startAutoRefresh();
 })();
