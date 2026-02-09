@@ -1,71 +1,19 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tarjetas por Día · Google Sheet</title>
-  <link rel="stylesheet" href="./styles.css" />
-  <script defer src="./app.js"></script>
+  <meta charset="UTF-8" />
+  <title>Dashboard- Novedades Lineas TSJ</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo">📅</div>
-      <div>
-        <h1>Tarjetas por Día</h1>
-        <p>Google Sheet → 1 tarjeta por día (columna) con todas las métricas (filas)</p>
-      </div>
-    </div>
-
-    <div class="actions">
-      <button class="btn" id="reloadBtn" type="button">Recargar</button>
-      <button class="btn ghost" id="openSheetBtn" type="button">Abrir Sheet</button>
-    </div>
-  </header>
 
   <main class="container">
-    <section class="panel">
-      <div class="panel-row">
-        <div class="field grow">
-          <label>Google Sheet</label>
-          <input id="sheetUrl" disabled />
-        </div>
-
-        <div class="field">
-          <label>gid</label>
-          <input id="gidInput" value="0" inputmode="numeric" />
-        </div>
-
-        <div class="field">
-          <label>Fila de fechas (1 = primera)</label>
-          <input id="headerRowInput" value="1" inputmode="numeric" />
-        </div>
-
-        <div class="field">
-          <label>Columna de métrica (A=1)</label>
-          <input id="metricColInput" value="1" inputmode="numeric" />
-        </div>
-      </div>
-
-      <div class="panel-row">
-        <div class="field grow">
-          <label>Buscar</label>
-          <input id="searchInput" type="search" placeholder="Buscar en métricas/valores..." />
-        </div>
-        <button class="btn" id="applyBtn" type="button">Aplicar</button>
-      </div>
-
-      <div class="panel-row">
-        <div class="hint" id="hint">
-          Cargando automáticamente tu Sheet al iniciar…
-        </div>
-      </div>
-    </section>
-
-    <section class="grid" id="cardsGrid" aria-live="polite"></section>
+    <section id="cardsGrid" class="cards-grid"></section>
   </main>
 
-  <dialog class="modal" id="detailModal">
+  <script defer src="./app.js?v=final"></script>
+</body>
+</html>
     <div class="modal-header">
       <div>
         <h2 id="modalTitle">Detalle</h2>
@@ -77,7 +25,7 @@
   </dialog>
 
   <footer class="footer">
-    <span>🔨🤖🔧 · Sitio estático (ideal GitHub Pages)</span>
+    <span>🔨🤖🔧 · by LL</span>
   </footer>
 </body>
 </html>
