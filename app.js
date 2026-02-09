@@ -9,8 +9,8 @@
   const DEFAULT_HEADER_ROW = 1; // fila donde están las fechas (1-based)
   const DEFAULT_METRIC_COL = 1; // columna métricas (A=1)
 
-  // ✅ Ventana: hoy y 7 días hacia atrás
-  const DAYS_BACK = 7;
+  // ✅ Exacto como pediste: HOY + 6 días atrás (7 tarjetas)
+  const DAYS_BACK = 6;
 
   // =========================
   // DOM
@@ -35,7 +35,8 @@
   // =========================
   // STATE
   // =========================
-  let dayCards = []; // [{ dayLabel, dayDate, metrics, searchBlob }]
+  // [{ dayLabel, dayDate, metrics, searchBlob }]
+  let dayCards = [];
   let filteredCards = [];
 
   // =========================
@@ -43,8 +44,8 @@
   // =========================
   sheetUrlInput.value = SHEET_URL;
   gidInput.value = DEFAULT_GID;
-  headerRowInput.value = DEFAULT_HEADER_ROW;
-  metricColInput.value = DEFAULT_METRIC_COL;
+  headerRowInput.value = String(DEFAULT_HEADER_ROW);
+  metricColInput.value = String(DEFAULT_METRIC_COL);
 
   openSheetBtn.addEventListener("click", () => {
     window.open(SHEET_URL, "_blank", "noopener,noreferrer");
@@ -76,6 +77,23 @@
   function extractSpreadsheetId(url) {
     const m = String(url).match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
     return m ? m[1] : "";
+  }
+
+  function startOfDay(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function addDays(d, days) {
+    const x = new Date(d);
+    x.setDate(x.getDate() + days);
+    return x;
+  }
+
+  function fmtISODate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dd}`;
   }
 
   // =========================
@@ -158,72 +176,48 @@
   }
 
   // =========================
-  // Fecha: parse de headers tipo 01/02, 01/02/2026, 2026-02-01
+  // Parse de fecha (más robusto)
+  // - soporta: "09/02", "09/02/2026", "2026-02-09"
+  // - soporta texto alrededor: "Lun 09/02", "09/02 (hoy)", etc.
+  // - asume formato AR dd/mm si viene con slash
   // =========================
   function parseDayLabelToDate(label) {
-    const s = String(label || "").trim();
-    if (!s) return null;
+    const raw = String(label || "").trim();
+    if (!raw) return null;
 
-    const today = new Date();
-    const y = today.getFullYear();
-
-    // yyyy-mm-dd
-    let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    // 1) si viene ISO escondido
+    let m = raw.match(/(\d{4})-(\d{2})-(\d{2})/);
     if (m) {
       const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
       return isNaN(dt.getTime()) ? null : dt;
     }
 
-    // dd/mm/yyyy (o dd/mm/yy)
-    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    // 2) buscar dd/mm/yyyy o dd/mm/yy en cualquier parte del string
+    m = raw.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
     if (m) {
       const dd = Number(m[1]);
       const mm = Number(m[2]);
-      let yy = Number(m[3]);
+      const yy = Number(m[3]);
       const yyyy = yy < 100 ? 2000 + yy : yy;
       const dt = new Date(yyyy, mm - 1, dd);
       return isNaN(dt.getTime()) ? null : dt;
     }
 
-    // dd/mm (sin año) -> asumimos año actual
-    m = s.match(/^(\d{1,2})\/(\d{1,2})$/);
+    // 3) buscar dd/mm (sin año) en cualquier parte
+    m = raw.match(/(\d{1,2})\/(\d{1,2})/);
     if (m) {
       const dd = Number(m[1]);
       const mm = Number(m[2]);
-      const dt = new Date(y, mm - 1, dd);
-      return isNaN(dt.getTime()) ? null : dt;
-    }
 
-    // dd-mm (sin año)
-    m = s.match(/^(\d{1,2})-(\d{1,2})$/);
-    if (m) {
-      const dd = Number(m[1]);
-      const mm = Number(m[2]);
-      const dt = new Date(y, mm - 1, dd);
+      // asumimos año actual (suficiente para "hoy y 6 atrás")
+      const today = new Date();
+      const yyyy = today.getFullYear();
+
+      const dt = new Date(yyyy, mm - 1, dd);
       return isNaN(dt.getTime()) ? null : dt;
     }
 
     return null;
-  }
-
-  function startOfDay(d) {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  }
-
-  function addDays(d, days) {
-    const x = new Date(d);
-    x.setDate(x.getDate() + days);
-    return x;
-  }
-
-  function withinLastNDaysInclusive(dayDate, nDaysBack) {
-    const today = startOfDay(new Date());
-    const min = addDays(today, -nDaysBack); // hoy - N
-    const max = today; // hoy
-    const d = startOfDay(dayDate);
-
-    // Solo hasta hoy, sin futuros
-    return d >= min && d <= max;
   }
 
   // =========================
@@ -236,19 +230,21 @@
     const header = matrix[h];
     if (!header) throw new Error("Fila de fechas inexistente.");
 
-    // columnas con fecha válida
+    // columnas con fecha parseable
     const dayCols = [];
     header.forEach((label, c) => {
       if (c === m) return;
       const dayDate = parseDayLabelToDate(label);
-      if (dayDate) dayCols.push({ c, label, dayDate });
+      if (dayDate) dayCols.push({ c, label, dayDate: startOfDay(dayDate) });
     });
 
-    if (!dayCols.length) throw new Error("No se detectaron columnas de fecha/día.");
+    if (!dayCols.length) {
+      throw new Error("No se detectaron columnas de fecha/día en esa fila.");
+    }
 
     const rows = matrix.slice(h + 1);
 
-    const cards = dayCols.map(({ c, label, dayDate }) => {
+    return dayCols.map(({ c, label, dayDate }) => {
       const metrics = [];
       rows.forEach((r) => {
         const name = (r[m] ?? "").trim();
@@ -267,8 +263,18 @@
         ).toLowerCase(),
       };
     });
+  }
 
-    return cards;
+  // =========================
+  // Filtro exacto: hoy → hoy-6 (sin futuros)
+  // =========================
+  function applyDateWindow(cards) {
+    const today = startOfDay(new Date());
+    const min = addDays(today, -DAYS_BACK);
+
+    return cards
+      .filter((c) => c.dayDate && c.dayDate <= today && c.dayDate >= min)
+      .sort((a, b) => b.dayDate.getTime() - a.dayDate.getTime()); // DESC
   }
 
   // =========================
@@ -287,6 +293,7 @@
           <button class="icon-btn" title="Ver detalle">🔎</button>
         </div>
       </div>
+
       <div class="card-body">
         <div class="table">
           ${card.metrics
@@ -310,27 +317,33 @@
   function renderCards() {
     cardsGrid.innerHTML = "";
 
-    // ✅ filtro por fecha: hoy → 7 días atrás (y nada futuro)
-    const windowed = dayCards
-      .filter((c) => c.dayDate && withinLastNDaysInclusive(c.dayDate, DAYS_BACK))
-      // ✅ orden: hoy primero (desc)
-      .sort((a, b) => startOfDay(b.dayDate).getTime() - startOfDay(a.dayDate).getTime());
+    const windowed = applyDateWindow(dayCards);
 
+    // búsqueda
     const q = searchInput.value.trim().toLowerCase();
     filteredCards = !q ? windowed : windowed.filter((c) => c.searchBlob.includes(q));
 
     filteredCards.forEach((c) => cardsGrid.appendChild(buildCard(c)));
 
+    const today = startOfDay(new Date());
+    const min = addDays(today, -DAYS_BACK);
+
     if (!filteredCards.length) {
-      showHint(`No hay datos en el rango (hoy y ${DAYS_BACK} días atrás) o no coincide la búsqueda.`, "warn");
+      showHint(
+        `No hay tarjetas en el rango ${fmtISODate(min)} → ${fmtISODate(today)} (o no coincide la búsqueda).`,
+        "warn"
+      );
     } else {
-      showHint(`Mostrando ${filteredCards.length} día(s): hoy → ${DAYS_BACK} días atrás.`, "ok");
+      showHint(
+        `Ordenado por fecha (DESC). Mostrando ${filteredCards.length} día(s): ${fmtISODate(today)} → ${fmtISODate(min)}.`,
+        "ok"
+      );
     }
   }
 
   function openDetail(card) {
     modalTitle.textContent = `Detalle ${card.dayLabel}`;
-    modalSubtitle.textContent = `${card.metrics.length} métricas (columna completa)`;
+    modalSubtitle.textContent = `${card.metrics.length} métricas · Fecha parseada: ${fmtISODate(card.dayDate)}`;
     modalBody.innerHTML = `
       <div class="table">
         ${card.metrics
@@ -367,10 +380,16 @@
         Number(metricColInput.value)
       );
 
+      // 🔎 Debug útil: ver fechas parseadas
+      console.log(
+        "Day cards parsed (label -> date):",
+        dayCards.map((c) => ({ label: c.dayLabel, date: c.dayDate && fmtISODate(c.dayDate) }))
+      );
+
       renderCards();
     } catch (err) {
       console.error(err);
-      showHint(err.message, "danger");
+      showHint(`Error: ${err.message}`, "danger");
     }
   }
 
