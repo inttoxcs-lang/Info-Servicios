@@ -53,6 +53,10 @@
     return x;
   }
 
+  function normalize(s) {
+    return String(s || "").toLowerCase().trim();
+  }
+
   // =========================
   // FETCH CSV
   // =========================
@@ -143,20 +147,28 @@
     return cols.map(({ c, d }) => {
       const metrics = [];
       let inasist = 0;
+      let lineaTM = 0;
+      let lineaTT = 0;
 
       rows.forEach(r => {
         const name = r[m];
         if (!name) return;
-        const val = r[c];
-        metrics.push({ name, value: val });
 
-        if (name.toLowerCase().includes("inasist")) {
-          const n = Number(String(val).replace(",", "."));
-          if (!isNaN(n)) inasist += n;
+        const value = r[c];
+        metrics.push({ name, value });
+
+        const n = normalize(name);
+
+        if (n === "linea tm") lineaTM = Number(value) || 0;
+        if (n === "linea tt") lineaTT = Number(value) || 0;
+
+        if (n.includes("inasist")) {
+          const v = Number(String(value).replace(",", "."));
+          if (!isNaN(v)) inasist += v;
         }
       });
 
-      return { date: d, metrics, inasist };
+      return { date: d, metrics, lineaTM, lineaTT, inasist };
     });
   }
 
@@ -195,9 +207,18 @@
         el.innerHTML = `
           <div class="card-body">
             <div class="kpi-row">
-              <div class="kpi"><div class="k">Con valor</div><div class="v">${card.metrics.filter(m => m.value).length}</div></div>
-              <div class="kpi"><div class="k">Total</div><div class="v">${card.metrics.length}</div></div>
-              <div class="kpi"><div class="k">Inasistencias</div><div class="v">${card.inasist}</div></div>
+              <div class="kpi">
+                <div class="k">Línea TM</div>
+                <div class="v">${card.lineaTM}</div>
+              </div>
+              <div class="kpi">
+                <div class="k">Línea TT</div>
+                <div class="v">${card.lineaTT}</div>
+              </div>
+              <div class="kpi">
+                <div class="k">Inasistencias</div>
+                <div class="v">${card.inasist}</div>
+              </div>
             </div>
 
             <div class="table table-scroll">
