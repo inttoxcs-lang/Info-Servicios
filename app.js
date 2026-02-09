@@ -1,20 +1,23 @@
 (() => {
-  // ==== CONFIG: tu Sheet ya cargado ====
-  const DEFAULT_SHEET_URL =
+  // =========================
+  // CONFIG – TU GOOGLE SHEET
+  // =========================
+  const SHEET_URL =
     "https://docs.google.com/spreadsheets/d/120WSaF1Zu6h4-Edid-Yc7GIWKwtQB61GQ3rNexH-MXc/edit?gid=0#gid=0";
 
-  // Ajustes por defecto (podés cambiarlos desde la UI)
   const DEFAULT_GID = "0";
-  const DEFAULT_HEADER_ROW = 1;  // fila donde están las fechas (1-based)
-  const DEFAULT_METRIC_COL = 1;  // columna donde están las métricas (A=1)
+  const DEFAULT_HEADER_ROW = 1; // fila donde están las fechas (1-based)
+  const DEFAULT_METRIC_COL = 1; // columna métricas (A=1)
 
-  // ==== DOM ====
+  // =========================
+  // DOM
+  // =========================
   const sheetUrlInput = document.getElementById("sheetUrl");
   const gidInput = document.getElementById("gidInput");
   const headerRowInput = document.getElementById("headerRowInput");
   const metricColInput = document.getElementById("metricColInput");
-  const loadBtn = document.getElementById("applyBtn");
   const reloadBtn = document.getElementById("reloadBtn");
+  const applyBtn = document.getElementById("applyBtn");
   const openSheetBtn = document.getElementById("openSheetBtn");
   const searchInput = document.getElementById("searchInput");
   const cardsGrid = document.getElementById("cardsGrid");
@@ -26,20 +29,28 @@
   const modalSubtitle = document.getElementById("modalSubtitle");
   const modalBody = document.getElementById("modalBody");
 
-  // ==== State ====
-  let dayCards = []; // [{ dayLabel, metrics: [{name,value}], searchBlob }]
+  // =========================
+  // STATE
+  // =========================
+  let dayCards = [];
   let filteredCards = [];
 
-  // ==== Init UI ====
-  sheetUrlInput.value = DEFAULT_SHEET_URL;
+  // =========================
+  // INIT UI
+  // =========================
+  sheetUrlInput.value = SHEET_URL;
   gidInput.value = DEFAULT_GID;
-  headerRowInput.value = String(DEFAULT_HEADER_ROW);
-  metricColInput.value = String(DEFAULT_METRIC_COL);
+  headerRowInput.value = DEFAULT_HEADER_ROW;
+  metricColInput.value = DEFAULT_METRIC_COL;
 
-  openSheetBtn.addEventListener("click", () => window.open(DEFAULT_SHEET_URL, "_blank", "noopener,noreferrer"));
+  openSheetBtn.addEventListener("click", () => {
+    window.open(SHEET_URL, "_blank", "noopener,noreferrer");
+  });
 
-  // ==== Helpers ====
-  const showHint = (text, tone = "info") => {
+  // =========================
+  // HELPERS
+  // =========================
+  function showHint(text, tone = "info") {
     const colors = {
       info: "rgba(255,255,255,0.68)",
       warn: "rgba(245,158,11,0.95)",
@@ -48,7 +59,7 @@
     };
     hint.textContent = text;
     hint.style.color = colors[tone] || colors.info;
-  };
+  }
 
   function escapeHtml(str) {
     return String(str ?? "")
@@ -64,19 +75,49 @@
     return m ? m[1] : "";
   }
 
+  // =========================
+  // FETCH CSV (CORREGIDO)
+  // =========================
   async function fetchCsv(spreadsheetId, gid) {
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(spreadsheetId)}/export?format=csv&gid=${encodeURIComponent(gid)}`;
+    const csvUrl =
+      `https://docs.google.com/spreadsheets/d/${encodeURIComponent(
+        spreadsheetId
+      )}/export?format=csv&gid=${encodeURIComponent(gid)}`;
+
     const res = await fetch(csvUrl, { cache: "no-store" });
+    const contentType = res.headers.get("content-type") || "";
+    const text = await res.text();
+
+    // DEBUG CLARO (mirar en F12 → Console)
+    console.log("CSV URL:", csvUrl);
+    console.log("HTTP:", res.status, res.statusText);
+    console.log("Content-Type:", contentType);
+    console.log("Preview:", text.slice(0, 300));
+
     if (!res.ok) {
       throw new Error(
-        `No pude descargar CSV (HTTP ${res.status}). ` +
-        `Asegurate de que el Sheet esté publicado o público (lectura).`
+        `HTTP ${res.status}. El Sheet no es accesible públicamente.`
       );
     }
-    return await res.text();
+
+    // Google devolvió HTML → login / permisos
+    if (
+      contentType.includes("text/html") ||
+      text.trim().startsWith("<") ||
+      text.includes("<html")
+    ) {
+      throw new Error(
+        "Google devolvió HTML (login/permisos). " +
+        "Tenés que ir a Google Sheets → Archivo → Publicar en la web."
+      );
+    }
+
+    return text; // CSV REAL
   }
 
-  // CSV -> matrix (soporta comillas)
+  // =========================
+  // CSV → MATRIZ
+  // =========================
   function parseCsvToMatrix(text) {
     const rows = [];
     let cur = [];
@@ -88,222 +129,192 @@
       const next = text[i + 1];
 
       if (ch === '"' && inQuotes && next === '"') {
-        field += '"'; i++;
+        field += '"';
+        i++;
         continue;
       }
-      if (ch === '"') { inQuotes = !inQuotes; continue; }
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+        continue;
+      }
 
       if (!inQuotes && ch === ",") {
-        cur.push(field); field = "";
+        cur.push(field);
+        field = "";
         continue;
       }
       if (!inQuotes && ch === "\n") {
-        cur.push(field); field = "";
+        cur.push(field);
         rows.push(cur);
         cur = [];
+        field = "";
         continue;
       }
       if (ch !== "\r") field += ch;
     }
+
     cur.push(field);
     rows.push(cur);
 
-    return rows.map(r => r.map(c => String(c ?? "").trim()));
+    return rows.map((r) => r.map((c) => String(c ?? "").trim()));
   }
 
-  // Detecta "día" en header: 01/02, 1/2, 2026-02-01, 01/02/2026...
   function looksLikeDayLabel(s) {
     if (!s) return false;
-    const t = s.trim();
-    if (/^\d{1,2}\/\d{1,2}$/.test(t)) return true;
-    if (/^\d{1,2}-\d{1,2}$/.test(t)) return true;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return true;
-    if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(t)) return true;
-    return false;
+    return (
+      /^\d{1,2}\/\d{1,2}$/.test(s) ||
+      /^\d{1,2}-\d{1,2}$/.test(s) ||
+      /^\d{4}-\d{2}-\d{2}$/.test(s) ||
+      /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(s)
+    );
   }
 
-  function buildCardsFromMatrix(matrix, headerRow1Based, metricCol1Based) {
-    const headerRowIdx = Math.max(1, Number(headerRow1Based || 1)) - 1;
-    const metricColIdx = Math.max(1, Number(metricCol1Based || 1)) - 1;
+  function buildCardsFromMatrix(matrix, headerRow1, metricCol1) {
+    const h = headerRow1 - 1;
+    const m = metricCol1 - 1;
 
-    if (!matrix[headerRowIdx]) throw new Error("La fila de fechas indicada no existe.");
+    const header = matrix[h];
+    if (!header) throw new Error("Fila de fechas inexistente.");
 
-    const headerRow = matrix[headerRowIdx];
-
-    // columnas de día
     const dayCols = [];
-    for (let c = 0; c < headerRow.length; c++) {
-      if (c === metricColIdx) continue;
-      const label = headerRow[c];
-      if (looksLikeDayLabel(label)) dayCols.push({ c, label });
-    }
-
-    if (dayCols.length === 0) {
-      throw new Error(
-        "No detecté columnas de fecha/día en esa fila. " +
-        "Probá cambiar 'Fila de fechas' o asegurate que el header tenga 01/02, 02/02, etc."
-      );
-    }
-
-    const metricsRows = matrix.slice(headerRowIdx + 1);
-
-    const cards = dayCols.map(({ c, label }) => {
-      const metrics = [];
-      for (const r of metricsRows) {
-        const name = (r[metricColIdx] ?? "").trim();
-        const value = (r[c] ?? "").trim();
-        if (!name) continue;
-        metrics.push({ name, value });
+    header.forEach((label, c) => {
+      if (c !== m && looksLikeDayLabel(label)) {
+        dayCols.push({ c, label });
       }
-      const searchBlob = (label + " " + metrics.map(m => `${m.name} ${m.value}`).join(" | ")).toLowerCase();
-      return { dayLabel: label, metrics, searchBlob };
     });
 
-    return cards;
+    if (!dayCols.length) {
+      throw new Error("No se detectaron columnas de fecha/día.");
+    }
+
+    const rows = matrix.slice(h + 1);
+
+    return dayCols.map(({ c, label }) => {
+      const metrics = [];
+      rows.forEach((r) => {
+        const name = (r[m] ?? "").trim();
+        if (!name) return;
+        metrics.push({
+          name,
+          value: (r[c] ?? "").trim(),
+        });
+      });
+
+      return {
+        dayLabel: label,
+        metrics,
+        searchBlob: (
+          label +
+          " " +
+          metrics.map((x) => `${x.name} ${x.value}`).join(" ")
+        ).toLowerCase(),
+      };
+    });
   }
 
-  // Render helpers
-  function mkKpi(label, value) {
-    const el = document.createElement("div");
-    el.className = "kpi";
-    el.innerHTML = `<div class="k">${escapeHtml(label)}</div><div class="v">${escapeHtml(value)}</div>`;
-    return el;
-  }
-
-  function buildCardEl(card) {
+  // =========================
+  // RENDER
+  // =========================
+  function buildCard(card) {
     const el = document.createElement("article");
     el.className = "card";
 
-    const header = document.createElement("div");
-    header.className = "card-header";
+    el.innerHTML = `
+      <div class="card-header">
+        <div class="badge"><span class="dot"></span>${escapeHtml(
+          card.dayLabel
+        )} · ${card.metrics.length} métricas</div>
+        <div class="card-actions">
+          <button class="icon-btn">🔎</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="table">
+          ${card.metrics
+            .slice(0, 10)
+            .map(
+              (m) => `
+              <div class="row">
+                <div class="key">${escapeHtml(m.name)}</div>
+                <div class="val">${escapeHtml(m.value || "—")}</div>
+              </div>`
+            )
+            .join("")}
+        </div>
+      </div>
+    `;
 
-    const badge = document.createElement("div");
-    badge.className = "badge";
-    badge.innerHTML = `<span class="dot"></span> ${escapeHtml(card.dayLabel)} · ${card.metrics.length} métricas`;
-
-    const actions = document.createElement("div");
-    actions.className = "card-actions";
-
-    const viewBtn = document.createElement("button");
-    viewBtn.className = "icon-btn";
-    viewBtn.type = "button";
-    viewBtn.title = "Ver detalle";
-    viewBtn.textContent = "🔎";
-    viewBtn.addEventListener("click", () => openDetail(card));
-
-    actions.appendChild(viewBtn);
-    header.appendChild(badge);
-    header.appendChild(actions);
-
-    const body = document.createElement("div");
-    body.className = "card-body";
-
-    const kpiRow = document.createElement("div");
-    kpiRow.className = "kpi-row";
-
-    const nonEmpty = card.metrics.filter(m => (m.value ?? "").trim() !== "");
-    kpiRow.appendChild(mkKpi("Con valor", String(nonEmpty.length)));
-    kpiRow.appendChild(mkKpi("Total métricas", String(card.metrics.length)));
-    kpiRow.appendChild(mkKpi("Top", nonEmpty.slice(0, 2).map(m => m.name).join(", ") || "—"));
-
-    body.appendChild(kpiRow);
-
-    const table = document.createElement("div");
-    table.className = "table";
-
-    card.metrics.slice(0, 10).forEach(m => {
-      const r = document.createElement("div");
-      r.className = "row";
-      r.innerHTML =
-        `<div class="key">${escapeHtml(m.name)}</div>` +
-        `<div class="val">${escapeHtml(m.value || "—")}</div>`;
-      table.appendChild(r);
-    });
-
-    body.appendChild(table);
-
-    el.appendChild(header);
-    el.appendChild(body);
+    el.querySelector(".icon-btn").onclick = () => openDetail(card);
     return el;
   }
 
   function renderCards() {
     cardsGrid.innerHTML = "";
-    const q = (searchInput.value || "").trim().toLowerCase();
+    const q = searchInput.value.trim().toLowerCase();
+    filteredCards = !q
+      ? dayCards
+      : dayCards.filter((c) => c.searchBlob.includes(q));
 
-    filteredCards = !q ? dayCards : dayCards.filter(c => c.searchBlob.includes(q));
-
-    for (const card of filteredCards) cardsGrid.appendChild(buildCardEl(card));
+    filteredCards.forEach((c) => cardsGrid.appendChild(buildCard(c)));
 
     showHint(
       filteredCards.length
-        ? `Listo: ${filteredCards.length} tarjeta(s) (1 por día).`
-        : "No hay resultados con esa búsqueda.",
+        ? `Mostrando ${filteredCards.length} día(s).`
+        : "No hay resultados.",
       filteredCards.length ? "ok" : "warn"
     );
   }
 
   function openDetail(card) {
-    modalTitle.textContent = `Detalle del día ${card.dayLabel}`;
-    modalSubtitle.textContent = `${card.metrics.length} métricas (columna completa)`;
-
-    modalBody.innerHTML = "";
-    const table = document.createElement("div");
-    table.className = "table";
-
-    card.metrics.forEach(m => {
-      const r = document.createElement("div");
-      r.className = "row";
-      r.innerHTML =
-        `<div class="key">${escapeHtml(m.name)}</div>` +
-        `<div class="val">${escapeHtml(m.value || "—")}</div>`;
-      table.appendChild(r);
-    });
-
-    modalBody.appendChild(table);
+    modalTitle.textContent = `Detalle ${card.dayLabel}`;
+    modalSubtitle.textContent = `${card.metrics.length} métricas`;
+    modalBody.innerHTML = `
+      <div class="table">
+        ${card.metrics
+          .map(
+            (m) => `
+          <div class="row">
+            <div class="key">${escapeHtml(m.name)}</div>
+            <div class="val">${escapeHtml(m.value || "—")}</div>
+          </div>`
+          )
+          .join("")}
+      </div>
+    `;
     detailModal.showModal();
   }
 
-  closeModalBtn.addEventListener("click", () => detailModal.close());
-  detailModal.addEventListener("click", (e) => {
-    const rect = detailModal.getBoundingClientRect();
-    const inDialog =
-      rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
-      rect.left <= e.clientX && e.clientX <= rect.left + rect.width;
-    if (!inDialog) detailModal.close();
-  });
+  closeModalBtn.onclick = () => detailModal.close();
 
-  // ==== Load logic ====
+  // =========================
+  // LOAD
+  // =========================
   async function load() {
     try {
+      showHint("Cargando datos del Google Sheet…", "info");
       cardsGrid.innerHTML = "";
-      showHint("Descargando datos del Google Sheet…", "info");
 
-      const url = DEFAULT_SHEET_URL;
-      const gid = String(gidInput.value || DEFAULT_GID).trim();
-      const headerRow = Number(headerRowInput.value || DEFAULT_HEADER_ROW);
-      const metricCol = Number(metricColInput.value || DEFAULT_METRIC_COL);
-
-      const id = extractSpreadsheetId(url);
-      if (!id) throw new Error("No detecté el ID del spreadsheet en la URL.");
-
-      const csv = await fetchCsv(id, gid);
+      const id = extractSpreadsheetId(SHEET_URL);
+      const csv = await fetchCsv(id, gidInput.value);
       const matrix = parseCsvToMatrix(csv);
 
-      dayCards = buildCardsFromMatrix(matrix, headerRow, metricCol);
+      dayCards = buildCardsFromMatrix(
+        matrix,
+        Number(headerRowInput.value),
+        Number(metricColInput.value)
+      );
 
-      showHint(`Cargado. Detecté ${dayCards.length} día(s).`, "ok");
       renderCards();
     } catch (err) {
       console.error(err);
-      showHint(`Error: ${err.message}`, "danger");
+      showHint(err.message, "danger");
     }
   }
 
-  loadBtn.addEventListener("click", load);
-  reloadBtn.addEventListener("click", load);
-  searchInput.addEventListener("input", renderCards);
+  reloadBtn.onclick = load;
+  applyBtn.onclick = load;
+  searchInput.oninput = renderCards;
 
-  // Autocarga al iniciar
+  // AUTOCARGA
   load();
 })();
