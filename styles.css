@@ -1,56 +1,37 @@
-/* =========================
-   RESET + BASE
-   ========================= */
+/* Reset */
 *,
 *::before,
-*::after{
+*::after {
   box-sizing: border-box;
 }
 
-html, body{
+html, body {
   min-height: 100%;
 }
 
-body{
+body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
   color: #e5e7eb;
-}
 
-/* =========================
-   🖤 BACKGROUND OSCURO SERIO
-   ========================= */
-body{
+  /* Background oscuro serio (sin data-uri) */
   background:
+    radial-gradient(900px 520px at 18% -20%, rgba(99, 102, 241, 0.08), transparent 70%),
+    radial-gradient(850px 480px at 85% 0%, rgba(34, 197, 94, 0.05), transparent 72%),
+    radial-gradient(950px 520px at 50% 115%, rgba(239, 68, 68, 0.05), transparent 75%),
     linear-gradient(180deg, #06070b 0%, #05060a 100%);
-
-  background-image:
-    /* noise ultra sutil */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E"),
-
-    /* halos MUY leves */
-    radial-gradient(900px 500px at 20% -20%, rgba(99,102,241,0.08), transparent 70%),
-    radial-gradient(800px 450px at 85% 0%, rgba(34,197,94,0.05), transparent 70%),
-    radial-gradient(900px 500px at 50% 110%, rgba(239,68,68,0.05), transparent 75%),
-
-    linear-gradient(180deg, #06070b 0%, #05060a 100%);
-
-  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
-  background-size: 200px 200px, cover, cover, cover, cover;
   background-attachment: fixed;
 }
 
-/* =========================
-   LAYOUT
-   ========================= */
-.container{
+/* Layout */
+.container {
   max-width: 1600px;
   margin: 0 auto;
   padding: 18px;
 }
 
-.cards-grid{
+.cards-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
@@ -58,176 +39,164 @@ body{
 }
 
 /* Tablet */
-@media (max-width: 1200px){
-  .cards-grid{
+@media (max-width: 1200px) {
+  .cards-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 /* Mobile */
-@media (max-width: 640px){
-  .cards-grid{
+@media (max-width: 640px) {
+  .cards-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* =========================
-   CARD
-   ========================= */
-.card{
+/* Card */
+.card {
   height: 100%;
   border-radius: 24px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.05);
-  box-shadow: 0 12px 35px rgba(0,0,0,0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
   display: flex;
 }
 
-.card-body{
+.card-body {
   width: 100%;
   padding: 14px;
   display: flex;
   flex-direction: column;
 }
 
-/* =========================
-   CARD STATUS
-   ========================= */
-.card--ok{
-  border-color: rgba(34,197,94,0.25);
+/* Estados */
+.card--ok {
+  border-color: rgba(34, 197, 94, 0.25);
 }
 
-.card--alert{
-  border-color: rgba(239,68,68,0.35);
+.card--alert {
+  border-color: rgba(239, 68, 68, 0.35);
 }
 
 /* Día actual: solo borde + glow */
-.card--today{
-  border-color: rgba(99,102,241,0.55) !important;
+.card--today {
+  border-color: rgba(99, 102, 241, 0.55) !important;
   box-shadow:
-    0 12px 35px rgba(0,0,0,0.35),
-    0 0 0 2px rgba(99,102,241,0.35) inset,
-    0 0 30px rgba(99,102,241,0.25);
+    0 12px 35px rgba(0, 0, 0, 0.35),
+    0 0 0 2px rgba(99, 102, 241, 0.35) inset,
+    0 0 30px rgba(99, 102, 241, 0.25);
 }
 
-/* =========================
-   FECHA
-   ========================= */
-.card-date{
+/* Fecha */
+.card-date {
   margin-bottom: 8px;
 }
 
-.date-pill{
+.date-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.14);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   font-size: 13px;
   font-weight: 600;
-  background: rgba(0,0,0,0.2);
+  background: rgba(0, 0, 0, 0.2);
 }
 
-.dot{
+.dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
 }
 
-.dot--green{
+.dot--green {
   background: #22c55e;
-  box-shadow: 0 0 0 4px rgba(34,197,94,0.2);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
 }
 
-.dot--red{
+.dot--red {
   background: #ef4444;
-  box-shadow: 0 0 0 4px rgba(239,68,68,0.2);
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
 }
 
-/* =========================
-   KPI
-   ========================= */
-.kpi-row{
+/* KPI */
+.kpi-row {
   display: flex;
   gap: 10px;
   margin: 10px 0;
 }
 
-.kpi{
+.kpi {
   flex: 1;
   padding: 10px;
   border-radius: 16px;
-  background: rgba(0,0,0,0.25);
+  background: rgba(0, 0, 0, 0.25);
 }
 
-.kpi .k{
+.kpi .k {
   font-size: 11px;
   font-weight: 700;
   opacity: 0.7;
   margin-bottom: 4px;
 }
 
-.kpi .v{
+.kpi .v {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-weight: 900;
   font-size: 14px;
 }
 
-/* =========================
-   TABLA
-   ========================= */
-.table{
+/* Tabla */
+.table {
   flex: 1;
   overflow: hidden;
   border-radius: 16px;
 }
 
-.table-scroll{
+.table-scroll {
   overflow-y: auto;
   max-height: 420px;
 }
 
-.row{
+.row {
   display: grid;
   grid-template-columns: 1fr 1.2fr;
   gap: 10px;
   padding: 10px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.row:first-child{
+.row:first-child {
   border-top: none;
 }
 
-.key{
+.key {
   font-size: 12px;
   opacity: 0.7;
 }
 
-.val{
+.val {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 13px;
 }
 
-/* =========================
-   MOBILE OPTIMIZATION
-   ========================= */
-@media (max-width: 520px){
-  .container{
+/* Mobile */
+@media (max-width: 520px) {
+  .container {
     padding: 12px;
   }
 
-  .kpi-row{
+  .kpi-row {
     flex-direction: column;
   }
 
-  .row{
+  .row {
     grid-template-columns: 1fr;
     gap: 6px;
   }
 
-  .table-scroll{
+  .table-scroll {
     max-height: 360px;
   }
 }
