@@ -62,12 +62,6 @@
       .filter(v => /^\d{3,}$/.test(v));
   }
 
-  function formatDateDDMM(date) {
-    const d = String(date.getDate()).padStart(2, "0");
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    return `${d}/${m}`;
-  }
-
   function formatDateDDMMYYYY(date) {
     const d = String(date.getDate()).padStart(2, "0");
     const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -85,7 +79,6 @@
     const res = await fetch(url, { cache: "no-store" });
     const text = await res.text();
 
-    // Si devuelve HTML, es bloqueo/permisos
     if (!res.ok || text.trim().startsWith("<")) {
       throw new Error("El Google Sheet no es público o no está publicado.");
     }
@@ -153,7 +146,29 @@
   }
 
   // =========================
-  // BUILD CARDS
+  // FILTRO DE FILAS EN TABLA
+  // =========================
+  function shouldHideInTable(metricName) {
+    const n = normalize(metricName);
+
+    // Ocultar exactamente estas filas del body/table:
+    // - Linea TM
+    // - Linea TT
+    // - Legajo inasistencia (o cualquier fila de legajos+inasist)
+    if (n === "linea tm") return true;
+    if (n === "linea tt") return true;
+
+    // filas de legajos de inasistencia (tolerante)
+    if (n.includes("legajo") && n.includes("inasist")) return true;
+
+    // si tu sheet tuviera una fila llamada exactamente "legajo inasistencia"
+    if (n === "legajo inasistencia") return true;
+
+    return false;
+  }
+
+  // =========================
+  // BUILD CARDS (KPIs + tabla filtrada)
   // =========================
   function buildCards(matrix, headerRow, metricCol) {
     const h = headerRow - 1;
@@ -165,42 +180,52 @@
     header.forEach((label, c) => {
       if (c === mCol) return;
       const d = parseDate(label);
-      if (d) cols.push({ c, d, rawLabel: label });
+      if (d) cols.push({ c, d });
     });
 
     const rows = matrix.slice(h + 1);
 
-    return cols.map(({ c, d, rawLabel }) => {
-      const metrics = [];
-      let lineaTM = "";
-      let lineaTT = "";
+    return cols.map(({ c, d }) => {
+      let lineaTM = "—";
+      let lineaTT = "—";
       let legajosInasist = [];
+
+      const metricsAll = [];
+      const metricsTable = [];
 
       rows.forEach(r => {
         const name = r[mCol];
         if (!name) return;
 
         const value = r[c];
-        metrics.push({ name, value });
-
         const n = normalize(name);
 
-        if (n.includes("linea tm")) lineaTM = value || "";
-        if (n.includes("linea tt")) lineaTT = value || "";
+        // guardo lista completa (por si necesitás luego)
+        const metricObj = { name, value };
+        metricsAll.push(metricObj);
 
-        // Solo legajos (si existe fila "legajos ... inasist")
+        // KPI: Linea TM/TT
+        if (n.includes("linea tm")) lineaTM = value || "—";
+        if (n.includes("linea tt")) lineaTT = value || "—";
+
+        // KPI: legajos (solo si existe fila de legajos+inasist)
         if (n.includes("legajo") && n.includes("inasist")) {
           legajosInasist = extractLegajos(value);
+        }
+
+        // Tabla: incluir todo EXCEPTO lo que debe ocultarse
+        if (!shouldHideInTable(name)) {
+          metricsTable.push(metricObj);
         }
       });
 
       return {
         date: d,
-        rawLabel,
-        metrics,
         lineaTM,
         lineaTT,
-        legajosInasist
+        legajosInasist,
+        metricsTable,
+        metricsAll
       };
     });
   }
@@ -225,7 +250,7 @@
   }
 
   // =========================
-  // RENDER (2 columnas via CSS)
+  // RENDER (fecha + KPI + tabla filtrada)
   // =========================
   function render() {
     cardsGrid.innerHTML = "";
@@ -234,8 +259,8 @@
       const el = document.createElement("article");
       el.className = "card";
 
-      const fecha = formatDateDDMMYYYY(card.date); // si querés corto, cambiá a formatDateDDMM(card.date)
-      const inasistTxt = card.legajosInasist.length ? card.legajosInasist.join(", ") : "—";
+      const fecha = formatDateDDMMYYYY(card.date);
+      const legajosTxt = card.legajosInasist.length ? card.legajosInasist.join(", ") : "—";
 
       el.innerHTML = `
         <div class="card-body">
@@ -249,20 +274,22 @@
           <div class="kpi-row">
             <div class="kpi">
               <div class="k">Línea TM</div>
-              <div class="v">${escapeHtml(String(card.lineaTM || "—"))}</div>
+              <div class="v">${escapeHtml(String(card.lineaTM))}</div>
             </div>
+
             <div class="kpi">
               <div class="k">Línea TT</div>
-              <div class="v">${escapeHtml(String(card.lineaTT || "—"))}</div>
+              <div class="v">${escapeHtml(String(card.lineaTT))}</div>
             </div>
+
             <div class="kpi">
-              <div class="k">Inasistencia</div>
-              <div class="v">${escapeHtml(inasistTxt)}</div>
+              <div class="k">Legajo inasistencia</div>
+              <div class="v">${escapeHtml(legajosTxt)}</div>
             </div>
           </div>
 
           <div class="table table-scroll">
-            ${card.metrics.map(m => `
+            ${card.metricsTable.map(m => `
               <div class="row">
                 <div class="key">${escapeHtml(m.name)}</div>
                 <div class="val">${escapeHtml(m.value || "—")}</div>
@@ -288,8 +315,5 @@
     render();
   }
 
-  load().catch(err => {
-    console.error(err);
-    // Dashboard limpio: no mostramos banners arriba
-  });
+  load().catch(err => console.error(err));
 })();
