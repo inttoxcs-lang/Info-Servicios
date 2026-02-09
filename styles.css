@@ -200,3 +200,54 @@ body {
     max-height: 360px;
   }
 }
+/* =========================
+   🔍 MEJOR LEGIBILIDAD
+   ========================= */
+
+/* Texto general */
+body {
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+/* Fecha */
+.date-pill {
+  font-size: 14px;
+}
+
+/* KPI */
+.kpi .k {
+  font-size: 12px;
+}
+
+.kpi .v {
+  font-size: 16px;
+}
+
+/* Tabla */
+.key {
+  font-size: 13px;
+}
+
+.val {
+  font-size: 14px;
+}
+
+/* Mobile: aún más cómodo */
+@media (max-width: 520px) {
+  body {
+    font-size: 16px;
+  }
+
+  .kpi .v {
+    font-size: 17px;
+  }
+
+  .key {
+    font-size: 14px;
+  }
+
+  .val {
+    font-size: 15px;
+  }
+}
