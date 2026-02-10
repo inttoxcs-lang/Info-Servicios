@@ -14,17 +14,16 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
 
-  /* ✅ Más legible */
-  font-size: 12.5px;
-  line-height: 1.48;
+  /* 🔽 Más compacto */
+  font-size: 12px;
+  line-height: 1.42;
 
   color: #e5e7eb;
 
-  /* Background oscuro serio (sin data-uri) */
   background:
     radial-gradient(1000px 560px at 18% -20%, rgba(99, 102, 241, 0.06), transparent 72%),
-    radial-gradient(900px 520px at 85% 0%, rgba(34, 197, 94, 0.045), transparent 74%),
-    radial-gradient(980px 560px at 50% 115%, rgba(239, 68, 68, 0.045), transparent 76%),
+    radial-gradient(900px 520px at 85% 0%, rgba(34, 197, 94, 0.04), transparent 74%),
+    radial-gradient(980px 560px at 50% 115%, rgba(239, 68, 68, 0.04), transparent 76%),
     linear-gradient(180deg, #05060a 0%, #040509 100%);
   background-attachment: fixed;
 }
@@ -33,13 +32,13 @@ body {
 .container {
   max-width: 1600px;
   margin: 0 auto;
-  padding: 18px;
+  padding: 14px; /* 🔽 */
 }
 
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px; /* 🔽 */
   align-items: stretch;
 }
 
@@ -60,36 +59,43 @@ body {
 /* Card */
 .card {
   height: 100%;
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+  border-radius: 18px; /* 🔽 menos redondeado, más enterprise */
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
   display: flex;
+  transition: transform .12s ease, border-color .12s ease, background .12s ease;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255,255,255,.18);
+  background: rgba(255,255,255, 0.055);
 }
 
 .card-body {
   width: 100%;
-  padding: 14px;
+  padding: 12px; /* 🔽 */
   display: flex;
   flex-direction: column;
 }
 
 /* Estados */
 .card--ok {
-  border-color: rgba(34, 197, 94, 0.25);
+  border-color: rgba(34, 197, 94, 0.22);
 }
 
 .card--alert {
-  border-color: rgba(239, 68, 68, 0.35);
+  border-color: rgba(239, 68, 68, 0.28);
 }
 
-/* Día actual: solo borde + glow */
+/* Día actual: borde + glow (más sutil) */
 .card--today {
-  border-color: rgba(99, 102, 241, 0.55) !important;
+  border-color: rgba(99, 102, 241, 0.45) !important;
   box-shadow:
-    0 12px 35px rgba(0, 0, 0, 0.35),
-    0 0 0 2px rgba(99, 102, 241, 0.35) inset,
-    0 0 30px rgba(99, 102, 241, 0.25);
+    0 10px 28px rgba(0, 0, 0, 0.32),
+    0 0 0 2px rgba(99, 102, 241, 0.20) inset,
+    0 0 22px rgba(99, 102, 241, 0.16);
 }
 
 /* Fecha */
@@ -101,81 +107,103 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
 
-  /* ✅ Más grande */
-  font-size: 14.5px;
+  padding: 7px 10px; /* 🔽 */
+  border-radius: 999px;
+
+  border: 1px solid rgba(255, 255, 255, 0.12);
+
+  /* 🔽 más chico */
+  font-size: 13px;
   font-weight: 650;
 
   background: rgba(0, 0, 0, 0.22);
 }
 
 .dot {
-  width: 9px;
-  height: 9px;
+  width: 8px; /* 🔽 */
+  height: 8px;
   border-radius: 50%;
 }
 
 .dot--green {
   background: #22c55e;
-  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
 }
 
 .dot--red {
   background: #ef4444;
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.16);
 }
 
 /* KPI */
 .kpi-row {
-  display: flex;
-  gap: 10px;
-  margin: 12px 0;
+  display: grid; /* 🔥 mejor que flex */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0; /* 🔽 */
 }
 
 .kpi {
-  flex: 1;
-  padding: 12px;
-  border-radius: 16px;
-  background: rgba(0, 0, 0, 0.26);
+  padding: 10px; /* 🔽 */
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.24);
+  border: 1px solid rgba(255,255,255,.06);
 }
 
 .kpi .k {
-  /* ✅ Más legible */
-  font-size: 12.5px;
+  font-size: 11px; /* 🔽 */
   font-weight: 750;
-  opacity: 0.78;
+  opacity: 0.75;
   margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: .25px;
 }
 
 .kpi .v {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-weight: 900;
 
-  /* ✅ Más grande */
-  font-size: 16px;
+  /* 🔽 */
+  font-size: 14px;
+  line-height: 1.15;
+
+  word-break: break-word;
 }
 
 /* Tabla */
 .table {
   flex: 1;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.03);
 }
 
 .table-scroll {
   overflow-y: auto;
-  max-height: 420px;
+
+  /* 🔥 Esto define el tamaño visual de la tarjeta */
+  max-height: 250px; /* 🔽 MUCHO más compacto */
 }
+
+/* scrollbar enterprise */
+.table-scroll::-webkit-scrollbar { width: 10px; }
+.table-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.12);
+  border-radius: 999px;
+  border: 2px solid rgba(0,0,0,0);
+  background-clip: padding-box;
+}
+.table-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,.03); }
 
 .row {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
+  grid-template-columns: 1fr 0.9fr; /* 🔥 mejor proporción */
   gap: 10px;
-  padding: 11px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+
+  padding: 9px 10px; /* 🔽 */
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .row:first-child {
@@ -183,16 +211,17 @@ body {
 }
 
 .key {
-  /* ✅ Más grande */
-  font-size: 13.5px;
+  font-size: 12px; /* 🔽 */
   opacity: 0.76;
+  line-height: 1.2;
 }
 
 .val {
+  text-align: right;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* ✅ Más grande */
-  font-size: 14.5px;
+  font-size: 12.5px; /* 🔽 */
+  font-weight: 800;
 }
 
 /* Mobile */
@@ -202,31 +231,27 @@ body {
   }
 
   body {
-    font-size: 16.5px;
+    font-size: 14px; /* 🔽 (antes 16.5 era enorme) */
   }
 
   .kpi-row {
-    flex-direction: column;
+    grid-template-columns: 1fr; /* 🔥 */
   }
 
   .kpi .v {
-    font-size: 17px;
+    font-size: 14px;
   }
 
   .row {
     grid-template-columns: 1fr;
-    gap: 7px;
-  }
-
-  .table-scroll {
-    max-height: 360px;
-  }
-
-  .key {
-    font-size: 14.5px;
+    gap: 6px;
   }
 
   .val {
-    font-size: 15.5px;
+    text-align: left;
+  }
+
+  .table-scroll {
+    max-height: 230px;
   }
 }
